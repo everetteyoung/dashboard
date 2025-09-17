@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AcquireX Ad Tracking System — Looker-Style Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --muted:#8f97a5; --text:#e9eef6; --good:#12b886; --bad:#fa5252; --accent:#4dabf7; --accent2:#ffd43b; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.8);backdrop-filter:saturate(1.4) blur(6px);border-bottom:1px solid #222}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .tabs{display:flex;gap:8px}
+    .tab{padding:10px 14px;border:1px solid #2a2f3a;border-bottom:none;border-radius:10px 10px 0 0;background:var(--panel);color:var(--muted);cursor:pointer}
+    .tab.active{color:var(--text);background:linear-gradient(180deg, #1b202a, #141821)}
+    main{max-width:1200px;margin:0 auto;padding:16px}
+    .panel{background:var(--panel);border:1px solid #2a2f3a;border-radius:12px;padding:16px}
+    .grid{display:grid;gap:12px}
+    .grid.cols-2{grid-template-columns:1fr 1fr}
+    .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+    .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+    .controls{display:flex;flex-wrap:wrap;gap:8px}
+    select, button, input[type="date"]{background:#0f131b;color:var(--text);border:1px solid #2a2f3a;border-radius:8px;padding:8px 10px}
+    button.primary{background:var(--accent);border-color:transparent;color:#0a0c10;font-weight:700}
+    button.ghost{background:#0f131b}
+    .badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2a2f3a;color:var(--muted)}
+    .kpi{background:#11151d;border:1px solid #262b35;border-radius:12px;padding:14px}
+    .kpi h4{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600}
+    .kpi .val{font-size:20px;font-weight:800}
+    .sub{font-size:12px;color:var(--muted)}
+    .delta{font-size:12px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px}
+    .delta.up{background:rgba(18,184,134,.12);color:var(--good)}
+    .delta.down{background:rgba(250,82,82,.12);color:var(--bad)}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .table th{font-size:12px;color:var(--muted);text-align:left;padding:8px}
+    .table td{padding:10px;background:#121723;border-top:1px solid #262b35;border-bottom:1px solid #262b35}
+    .row{border-radius:10px;overflow:hidden}
+    .sticky{position:sticky;left:0;background:#121723}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .pill{display:inline-flex;gap:6px;background:#0f131b;border:1px solid #2a2f3a;border-radius:999px;padding:4px}
+    .pill button{border:none;background:transparent;color:var(--muted);padding:6px 10px;border-radius:999px;cursor:pointer}
+    .pill button.active{background:var(--accent);color:#0b0e13;font-weight:700}
+    .funnel{display:grid;gap:8px}
+    .funnel .step{display:flex;justify-content:space-between;align-items:center;background:#121723;border:1px solid #262b35;border-radius:10px;padding:10px}
+    .muted{color:var(--muted)}
+    .modal{position:fixed;top:10%;bottom:10%;left:10%;right:10%;display:none;overflow:auto;background:rgba(0,0,0,.55)}
+    .modal .content{max-height:80vh;width:80%;margin:auto;background:var(--panel);border:1px solid #2a2f3a;border-radius:12px;padding:16px;overflow:auto}
+    .sr{white-space:nowrap}
+    .lowdata{font-size:11px;color:#999;background:#1c1f27;border:1px solid #2a2f3a;border-radius:6px;padding:2px 6px;margin-left:6px}
+    .scrollx{overflow:auto}
+    .pipeline{display:grid;gap:8px}
+    .pipeline .stage{background:#121723;border:1px solid #262b35;border-radius:10px;padding:10px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--accent)"></div>
+          <strong>AcquireX — Looker-Style Prototype</strong>
+          <span class="badge">Dummy Data</span>
+        </div>
+        <div class="tabs">
+          <div class="tab active" data-page="dashboard">Dashboard</div>
+          <div class="tab" data-page="performance">Performance</div>
+          <div class="tab" data-page="pipeline">Pipeline</div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <!-- Global Filters -->
+    <section class="panel" id="filters">
+      <div class="controls">
+        <select id="clientSel"><option value="all">All Clients</option></select>
+        <select id="timePreset">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="thismonth">This month</option>
+          <option value="lastmonth">Last month</option>
+          <option value="max">Maximum</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input type="date" id="startDate" />
+        <input type="date" id="endDate" />
+        <select id="campaignSel"><option value="all">All Campaigns</option></select>
+        <select id="adsetSel"><option value="all">All Ad Sets</option></select>
+        <select id="adSel"><option value="all">All Ads</option></select>
+        <button id="applyBtn" class="primary">Apply</button>
+      </div>
+    </section>
+    <!-- DASHBOARD -->
+    <section id="page-dashboard" class="page active">
+      <div class="grid cols-4" id="kpiGrid"></div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div class="panel">
+          <div class="toolbar">
+            <strong>Trend</strong>
+            <div>
+              <button id="openTrend" class="ghost">Open Trend View</button>
+            </div>
+          </div>
+          <canvas id="trendChart" height="120"></canvas>
+          <div class="sub">Bars: Leads, Appointments. Line: Spend.</div>
+        </div>
+        <div class="panel">
+          <div class="toolbar"><strong>Funnel</strong><span class="lowdata" id="lowDataBadge" style="display:none">low data</span></div>
+          <div class="funnel" id="funnel"></div>
+        </div>
+      </div>
+    </section>
+    <!-- PERFORMANCE -->
+    <section id="page-performance" class="page" style="display:none">
+      <div class="panel">
+        <div class="toolbar">
+          <strong>Performance</strong>
+          <div class="pill">
+            <button class="toggle-level active" data-level="campaigns">Campaigns</button>
+            <button class="toggle-level" data-level="adsets">Ad Sets</button>
+            <button class="toggle-level" data-level="ads">Ads</button>
+          </div>
+          <button id="openPerfTrend" class="ghost">Chart</button>
+        </div>
+        <div class="scrollx">
+          <table class="table" id="perfTable"></table>
+        </div>
+      </div>
+    </section>
+    <!-- PIPELINE -->
+    <section id="page-pipeline" class="page" style="display:none">
+      <div class="panel">
+        <div class="toolbar"><strong>Lead Pipeline</strong> <span id="totalLeads"></span></div>
+        <div class="pipeline" id="pipelineContainer"></div>
+      </div>
+    </section>
+  </main>
+  <!-- Modal for Trend / Perf chart -->
+  <div class="modal" id="modal">
+    <div class="content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong id="modalTitle">Custom Trend</strong>
+        <div>
+          <select id="bucketStep">
+            <option value="1">1 day</option>
+            <option value="2">2 days</option>
+            <option value="4" selected>4 days</option>
+            <option value="7">7 days</option>
+            <option value="15">15 days</option>
+          </select>
+          <button id="closeModal" class="ghost">Close</button>
+        </div>
+      </div>
+      <canvas id="modalChart" height="140"></canvas>
+    </div>
+  </div>
+  <!-- Modal for Leads in Stage -->
+  <div class="modal" id="leadsModal">
+    <div class="content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong id="leadsModalTitle">Leads</strong>
+        <button id="closeLeadsModal" class="ghost">Close</button>
+      </div>
+      <div class="scrollx">
+        <table class="table" id="leadsModalTable"></table>
+      </div>
+    </div>
+  </div>
+<script>
+// ------------------------------
+// Dummy Data Generators
+// ------------------------------
+const today = new Date();
+function fmtDate(d){return d.toISOString().slice(0,10)}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+// Entities
+const clients = [
+  {id:'CL1', name:'Client A'},
+  {id:'CL2', name:'Client B'}
+];
+const campaigns = [
+  {id:'C1', name:'Premium ADU Leads'},
+  {id:'C2', name:'High-Value Remodels'}
+];
+const adsets = [
+  {id:'S1', campaign_id:'C1', name:'Los Angeles 35+'},
+  {id:'S2', campaign_id:'C1', name:'San Diego 30+'},
+  {id:'S3', campaign_id:'C2', name:'Nashville 28+'}
+];
+const ads = [
+  {id:'A1', adset_id:'S1', campaign_id:'C1', name:'ADU Hook v1', status:'on'},
+  {id:'A2', adset_id:'S1', campaign_id:'C1', name:'ADU Hook v2', status:'on'},
+  {id:'A3', adset_id:'S2', campaign_id:'C1', name:'ADU Test v3', status:'off'},
+  {id:'A4', adset_id:'S3', campaign_id:'C2', name:'Remodel Hook v1', status:'on'}
+];
+// joined_fact_daily — last 60 days synthetic
+const jf = [];
+for(let i=0;i<60;i++){
+  const d = addDays(today,-i);
+  const date = fmtDate(d);
+  ads.forEach(ad=>{
+    const base = ({A1:1.0,A2:0.9,A3:0.4,A4:1.2})[ad.id] || 0.8;
+    const spend = +(Math.max(0, (60 + Math.sin(i/3)*15) * base)).toFixed(2);
+    const impressions = Math.floor(spend*100 + Math.random()*300);
+    const reach = Math.floor(impressions*0.7);
+    const clicks = Math.floor(impressions*(0.01 + base*0.002) );
+    const unique_clicks = Math.max(0, clicks - Math.floor(clicks*0.15));
+    const leads = Math.floor(unique_clicks*(0.12 + (ad.id==='A4'?0.03:0)));
+    const appts = Math.floor(leads*(0.25 + (ad.id==='A1'?0.05:0)));
+    const account_id = ad.campaign_id === 'C1' ? 'CL1' : 'CL2';
+    jf.push({date, account_id, campaign_id:ad.campaign_id, adset_id:ad.adset_id, ad_id:ad.id,
+      campaign_name: campaigns.find(c=>c.id===ad.campaign_id).name,
+      adset_name: adsets.find(s=>s.id===ad.adset_id).name,
+      ad_name: ad.name,
+      spend, impressions, reach, clicks, unique_clicks,
+      leads_optin:leads, appointments_attributed:appts, ad_status:ad.status});
+  });
+}
+// Lead + Appointment tables using AXUniqueID ties
+const leads = [];
+const appts = [];
+let uidCounter=1000;
+for(let i=0;i<120;i++){
+  const day = addDays(today,-Math.floor(Math.random()*45));
+  const utmAd = ads[Math.floor(Math.random()*ads.length)].id;
+  const ad = ads.find(a=>a.id===utmAd);
+  const campaign_id = ad.campaign_id;
+  const account_id = campaign_id === 'C1' ? 'CL1' : 'CL2';
+  const email = `user${uidCounter}@example.com`;
+  const axuid = email.toLowerCase();
+  const created = new Date(day.getTime()+Math.floor(Math.random()*86400000));
+  const leadObj = {
+    lead_id:`L${uidCounter}`, ax_unique_id:axuid, created_at:created.toISOString(), response_time_seconds:Math.floor(Math.random()*7200),
+    first_name:'Alex', last_name:`${uidCounter}`, phone:'+1-555-01' + (uidCounter%1000).toString().padStart(3,'0'), email,
+    q1:'Project Type', r1: Math.random()>0.5?'ADU':'Remodel',
+    q2:'Budget', r2:['$80k','$120k','$250k+'][Math.floor(Math.random()*3)],
+    q3:'Timeline', r3:['0-3 mo','3-6 mo','6+ mo'][Math.floor(Math.random()*3)],
+    q4:'Zip', r4:['90001','92101','37201'][Math.floor(Math.random()*3)],
+    q5:'Heard From', r5:['Facebook','Instagram','Referral'][Math.floor(Math.random()*3)],
+    q6:'Notes', r6:'',
+    utm_source:'facebook', utm_adset_id:'', utm_ad_id:utmAd, utm_adset_name:'', utm_placement:'feed', fbclid:'fbclid'+uidCounter,
+    qualified_flag: Math.random()>0.2, lead_status: ['new','working','disqualified','converted'][Math.floor(Math.random()*4)],
+    account_id, pulled_at:new Date().toISOString()
+  };
+  leads.push(leadObj);
+  let hasAppt = false;
+  if(Math.random()<0.35){
+    hasAppt = true;
+    const booking = addDays(day, Math.floor(Math.random()*10));
+    appts.push({
+      appt_id:`AP${uidCounter}`, ax_unique_id:axuid, invitee_first:'Alex', invitee_last:`${uidCounter}`, invitee_email:email, invitee_phone:'+1-555-01' + (uidCounter%1000).toString().padStart(3,'0'),
+      booking_at:booking.toISOString(), valid_appt_flag:Math.random()>0.05,
+      s1:'Scope', sr1:'Site visit', s2:'Budget', sr2:'TBD', s3:'', sr3:'', s4:'', sr4:'', s5:'', sr5:'', s6:'', sr6:'',
+      expected_deal_value: (50000 + Math.floor(Math.random()*250000)), show_status: Math.random()>0.15?'showed':'no show',
+      deal_stage:['lead','estimate','proposal','closed won','closed lost'][Math.floor(Math.random()*5)],
+      closed_deal_size: Math.random()>0.8 ? (60000+Math.floor(Math.random()*200000)) : 0,
+      account_id, pulled_at:new Date().toISOString()
+    });
+  }
+  let stage;
+  if(!leadObj.qualified_flag){
+    const reasons = ['Out of Area', 'Financial', 'Services', 'Timeline'];
+    stage = 'Unqualified - ' + reasons[Math.floor(Math.random()*4)];
+  } else {
+    if(leadObj.lead_status === 'new'){
+      stage = Math.random() < 0.5 ? 'New' : 'Non-Respondent';
+    } else if(leadObj.lead_status === 'working'){
+      stage = 'Qualified - Nurturing';
+    } else if(leadObj.lead_status === 'disqualified'){
+      stage = 'Unqualified - Other';
+    } else if(leadObj.lead_status === 'converted'){
+      if(hasAppt){
+        const appt = appts[appts.length - 1];
+        if(Math.random() < 0.2){
+          stage = 'Assessment Rescheduled';
+        } else if(appt.show_status === 'showed'){
+          stage = 'Assessment Completed';
+        } else {
+          stage = 'Assessment Canceled';
+        }
+      } else {
+        stage = 'Responded';
+      }
+    }
+  }
+  if(!stage) stage = 'New';
+  leadObj.stage = stage;
+  uidCounter++;
+}
+// ------------------------------
+// Utilities
+// ------------------------------
+function inRange(d, start, end){ const t = new Date(d).getTime(); return t>=start.getTime() && t<=end.getTime(); }
+function sum(arr, key){ return arr.reduce((a,b)=>a+(+b[key]||0),0) }
+function safeDiv(a,b){ return b===0?0:(a/b) }
+function pct(x){ return (x*100).toFixed(1)+'%' }
+function money(x){ return '$'+(x||0).toFixed(2) }
+function daysRunning(rows){ const s = new Set(rows.filter(r=>r.spend>0 || r.ad_status==='on').map(r=>r.date)); return s.size }
+function badgeDelta(cur, prev){ const diff = prev===0 ? (cur>0?1:0) : (cur-prev)/Math.abs(prev); const cls = diff>=0? 'up':'down'; const sign = diff>=0?'+':''; return `<span class="delta ${cls}">${sign}${(diff*100).toFixed(1)}%</span>` }
+// ------------------------------
+// Filter State
+// ------------------------------
+const state = { start:addDays(today,-30), end:today, client:'all', campaign:'all', adset:'all', ad:'all', level:'campaigns' };
+let modalLevel = null, modalId = null, modalName = null;
+function populateSelectors(){
+  const clSel = document.getElementById('clientSel');
+  clients.forEach(cl=>{const o=document.createElement('option');o.value=cl.id;o.textContent=cl.name;clSel.appendChild(o)});
+  const cSel = document.getElementById('campaignSel');
+  campaigns.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;cSel.appendChild(o)});
+  const sSel = document.getElementById('adsetSel');
+  adsets.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;sSel.appendChild(o)});
+  const aSel = document.getElementById('adSel');
+  ads.forEach(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=a.name;aSel.appendChild(o)});
+}
+function getFilteredJF(){
+  return jf.filter(r=>{
+    if(!inRange(r.date, state.start, state.end)) return false;
+    if(state.client!=='all' && r.account_id!==state.client) return false;
+    if(state.campaign!=='all' && r.campaign_id!==state.campaign) return false;
+    if(state.adset!=='all' && r.adset_id!==state.adset) return false;
+    if(state.ad!=='all' && r.ad_id!==state.ad) return false;
+    return true;
+  });
+}
+function getFilteredLeads(){
+  return leads.filter(l=>{
+    const date = l.created_at.split('T')[0];
+    if(!inRange(date, state.start, state.end)) return false;
+    if(state.client!=='all' && l.account_id!==state.client) return false;
+    return true;
+  });
+}
+function getRowsForChart(level, id){
+  const base = getFilteredJF();
+  if(!level || !id) return base;
+  const key = level==='campaigns' ? 'campaign_id' : level==='adsets' ? 'adset_id' : 'ad_id';
+  return base.filter(r=> r[key]===id);
+}
+// ------------------------------
+// Dashboard Rendering
+// ------------------------------
+let trendChart, modalChart;
+function renderDashboard(){
+  const rows = getFilteredJF();
+  const spend = sum(rows,'spend');
+  const impr = sum(rows,'impressions');
+  const reach = sum(rows,'reach');
+  const clicks = sum(rows,'clicks');
+  const uclicks = sum(rows,'unique_clicks');
+  const leads = sum(rows,'leads_optin');
+  const apptsSum = sum(rows,'appointments_attributed');
+  const ctr = safeDiv(clicks, impr);
+  const uctr = safeDiv(uclicks, impr);
+  const conv = uclicks===0? safeDiv(leads, clicks): safeDiv(leads, uclicks);
+  const cpl = safeDiv(spend, leads);
+  const book = safeDiv(apptsSum, leads);
+  const cpb = safeDiv(spend, apptsSum);
+  const kpis = [
+    {title:'Total Spend', val: money(spend)},
+    {title:'Total Impressions', val: impr.toLocaleString()},
+    {title:'Total Reach', val: reach.toLocaleString()},
+    {title:'Total Clicks', val: clicks.toLocaleString(), sub:`CTR ${pct(ctr)}`},
+    {title:'Total Unique Clicks', val: uclicks.toLocaleString(), sub:`UCTR ${pct(uctr)}`},
+    {title:'Total Opt-in Leads', val: leads.toLocaleString(), sub:`Conv ${pct(conv)}`},
+    {title:'Cost Per Lead', val: money(cpl)},
+    {title:'Total Appointments', val: apptsSum.toLocaleString(), sub:`Booking ${pct(book)}`},
+    {title:'Cost Per Booking', val: money(cpb)},
+    {title:'Lead to Appointment %', val: pct(book)}
+  ];
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  kpis.forEach(k=>{
+    const el = document.createElement('div'); el.className='kpi';
+    el.innerHTML = `<h4>${k.title}</h4><div class="val">${k.val}</div>${k.sub?`<div class="sub">${k.sub}</div>`:''}`;
+    grid.appendChild(el);
+  });
+  // Funnel
+  document.getElementById('lowDataBadge').style.display = impr<100 ? 'inline-block':'none';
+  const cpm = safeDiv(spend*1000, impr);
+  const cpr = safeDiv(spend*1000, reach);
+  const share = safeDiv(uclicks, clicks);
+  const funnel = document.getElementById('funnel');
+  funnel.innerHTML = '';
+  const steps = [
+    {name:'Impressions', count:impr, subs:[`CPM ${money(cpm)}`]},
+    {name:'Reach', count:reach, subs:[`Cost/1k Reach ${money(cpr)}`]},
+    {name:'Clicks', count:clicks, subs:[`CTR ${pct(ctr)}`]},
+    {name:'Unique Clicks', count:uclicks, subs:[`UCTR ${pct(uctr)}`, `Share of Clicks ${pct(share)}`]},
+    {name:'Opt-in Leads', count:leads, subs:[`Conversion ${pct(conv)}`]},
+    {name:'Booked Appointments', count:apptsSum, subs:[`Share of Leads ${pct(book)}`]},
+  ];
+  steps.forEach(s=>{
+    const row = document.createElement('div'); row.className='step';
+    row.innerHTML = `<div><strong>${s.name}</strong><div class="sub">${s.subs.join(' • ')}</div></div><div class="val">${(s.count||0).toLocaleString()}</div>`;
+    funnel.appendChild(row);
+  });
+  // Trend (inline quick view)
+  const byDay = groupByDay(rows);
+  const labels = byDay.map(r=>r.date);
+  const leadsSeries = byDay.map(r=>r.leads);
+  const apptsSeries = byDay.map(r=>r.appts);
+  const spendSeries = byDay.map(r=>r.spend);
+  if(trendChart){ trendChart.destroy(); }
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Leads', data:leadsSeries},
+      {label:'Appointments', data:apptsSeries},
+      {type:'line', label:'Spend', data:spendSeries, yAxisID:'y1'}
+    ]},
+    options:{ responsive:true, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right' } }, plugins:{ legend:{display:true} } }
+  });
+}
+function groupByDay(rows){
+  const m = new Map();
+  rows.forEach(r=>{
+    const o = m.get(r.date)||{date:r.date, spend:0, leads:0, appts:0};
+    o.spend += r.spend; o.leads += r.leads_optin; o.appts += r.appointments_attributed; m.set(r.date,o);
+  });
+  return Array.from(m.values()).sort((a,b)=>a.date.localeCompare(b.date));
+}
+// ------------------------------
+// Performance Table
+// ------------------------------
+function renderPerformance(){
+  const rows = getFilteredJF();
+  const level = state.level;
+  const groupKey = level==='ads' ? 'ad_id' : level==='adsets' ? 'adset_id' : 'campaign_id';
+  const nameKey = level==='ads' ? 'ad_name' : level==='adsets' ? 'adset_name' : 'campaign_name';
+  const statusFromAd = (id)=>{
+    if(level==='campaigns'){ const ids = ads.filter(a=>a.campaign_id===id).map(a=>a.id); return ids.some(id=>ads.find(x=>x.id===id)?.status==='on')?'on':'off'; }
+    if(level==='adsets'){ const ids = ads.filter(a=>a.adset_id===id).map(a=>a.id); return ids.some(id=>ads.find(x=>x.id===id)?.status==='on')?'on':'off'; }
+    return ads.find(a=>a.id===id)?.status||'off';
+  };
+  const map = new Map();
+  rows.forEach(r=>{
+    const k = r[groupKey];
+    const o = map.get(k)||{id:k, name:r[nameKey], campaign_id:r.campaign_id, adset_id:r.adset_id, status:statusFromAd(k),
+      spend:0, impressions:0, reach:0, clicks:0, unique_clicks:0, leads:0, appts:0, days:new Set(), dates:[]};
+    o.spend+=r.spend; o.impressions+=r.impressions; o.reach+=r.reach; o.clicks+=r.clicks; o.unique_clicks+=r.unique_clicks; o.leads+=r.leads_optin; o.appts+=r.appointments_attributed; o.days.add(r.date); o.dates.push({date:r.date, spend:r.spend, clicks:r.clicks, unique_clicks:r.unique_clicks, leads:r.leads_optin, appts:r.appointments_attributed});
+    map.set(k,o);
+  });
+  const arr = Array.from(map.values());
+  function windowSum(dates, metric, startOffset, endOffset){
+    const end = addDays(state.end, -endOffset);
+    const start = addDays(state.end, -startOffset);
+    return dates.filter(x=>inRange(x.date, start, end)).reduce((a,b)=>a+(+b[metric]||0),0);
+  }
+  function deltas(o){
+    const cur3 = {
+      spend: windowSum(o.dates,'spend',2,0),
+      impressions: windowSum(o.dates,'clicks',2,0),
+      clicks: windowSum(o.dates,'clicks',2,0),
+      unique_clicks: windowSum(o.dates,'unique_clicks',2,0),
+      leads: windowSum(o.dates,'leads',2,0),
+      appts: windowSum(o.dates,'appts',2,0)
+    };
+    const prev3 = {
+      spend: windowSum(o.dates,'spend',5,3),
+      impressions: windowSum(o.dates,'clicks',5,3),
+      clicks: windowSum(o.dates,'clicks',5,3),
+      unique_clicks: windowSum(o.dates,'unique_clicks',5,3),
+      leads: windowSum(o.dates,'leads',5,3),
+      appts: windowSum(o.dates,'appts',5,3)
+    };
+    const cur7 = {
+      spend: windowSum(o.dates,'spend',6,0),
+      clicks: windowSum(o.dates,'clicks',6,0),
+      unique_clicks: windowSum(o.dates,'unique_clicks',6,0),
+      leads: windowSum(o.dates,'leads',6,0),
+      appts: windowSum(o.dates,'appts',6,0)
+    };
+    const prev7 = {
+      spend: windowSum(o.dates,'spend',13,7),
+      clicks: windowSum(o.dates,'clicks',13,7),
+      unique_clicks: windowSum(o.dates,'unique_clicks',13,7),
+      leads: windowSum(o.dates,'leads',13,7),
+      appts: windowSum(o.dates,'appts',13,7)
+    };
+    return {cur3, prev3, cur7, prev7};
+  }
+  let cols = [
+    {key:'hier', label:'Hierarchy'},
+    {key:'status', label:'Status'},
+    {key:'spend', label:'Spend', fmt:money},
+    {key:'impressions', label:'Impr'},
+    {key:'reach', label:'Reach'},
+    {key:'clicks', label:'Clicks'},
+    {key:'ctr', label:'CTR', calc:o=>safeDiv(o.clicks,o.impressions), fmt:pct},
+    {key:'cpc', label:'CPC', calc:o=>safeDiv(o.spend,o.clicks), fmt:money},
+    {key:'unique_clicks', label:'U-Clicks'},
+    {key:'uctr', label:'UCTR', calc:o=>safeDiv(o.unique_clicks,o.impressions), fmt:pct},
+    {key:'cpuc', label:'CPUC', calc:o=>safeDiv(o.spend,o.unique_clicks), fmt:money},
+    {key:'leads', label:'Leads'},
+    {key:'conv', label:'Conv', calc:o=> o.unique_clicks===0 ? safeDiv(o.leads,o.clicks) : safeDiv(o.leads,o.unique_clicks), fmt:pct},
+    {key:'cpl', label:'CPL', calc:o=>safeDiv(o.spend,o.leads), fmt:money},
+    {key:'appts', label:'Appts'},
+    {key:'cpb', label:'CPB', calc:o=>safeDiv(o.spend,o.appts), fmt:money},
+    {key:'l2a', label:'Lead→Appt %', calc:o=>safeDiv(o.appts,o.leads), fmt:pct},
+    {key:'days', label:'Days Running', calc:o=>o.days.size}
+  ];
+  cols.splice(2, 0, {key:'chart', label:''});
+  const table = document.getElementById('perfTable');
+  table.innerHTML = '';
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  cols.forEach(c=>{ const th=document.createElement('th'); th.textContent=c.label; trh.appendChild(th); });
+  thead.appendChild(trh); table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  arr.forEach(o=>{
+    const d = deltas(o);
+    const tr = document.createElement('tr'); tr.className='row';
+    cols.forEach((c, i)=>{
+      const td = document.createElement('td');
+      if(i === 0) td.classList.add('sticky');
+      let v;
+      if(c.key==='hier'){
+        const hier = level==='ads' ? `${o.name} · ${o.adset_id} · ${o.campaign_id}` : level==='adsets' ? `${o.name} · ${o.campaign_id}` : `${o.name}`;
+        v = `<div class="sr">${hier}</div>`;
+      } else if(c.key==='status'){ v = `<span class="badge" style="color:${o.status==='on'?'#12b886':'#adb5bd'}">${o.status}</span>` }
+      else if(c.key==='chart'){ v = `<button class="ghost chart-btn" data-level="${level}" data-id="${o.id}" data-name="${o.name}">Chart</button>` }
+      else if(c.calc){ const raw = c.calc(o); v = c.fmt? c.fmt(raw) : raw }
+      else { v = (o[c.key]||0).toLocaleString() }
+      if(['spend','clicks','leads','appts'].includes(c.key)){
+        const cur = c.key==='spend'?d.cur3.spend: c.key==='clicks'?d.cur3.clicks: c.key==='leads'?d.cur3.leads: d.cur3.appts;
+        const prev = c.key==='spend'?d.prev3.spend: c.key==='clicks'?d.prev3.clicks: c.key==='leads'?d.prev3.leads: d.prev3.appts;
+        v += ' ' + badgeDelta(cur,prev);
+        const cur7 = c.key==='spend'?d.cur7.spend: c.key==='clicks'?d.cur7.clicks: c.key==='leads'?d.cur7.leads: d.cur7.appts;
+        const prev7 = c.key==='spend'?d.prev7.spend: c.key==='clicks'?d.prev7.clicks: c.key==='leads'?d.prev7.leads: d.prev7.appts;
+        v += ' ' + badgeDelta(cur7,prev7);
+      }
+      td.innerHTML = v; tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  document.querySelectorAll('.chart-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openModal(btn.dataset.level, btn.dataset.id, btn.dataset.name);
+    });
+  });
+}
+// ------------------------------
+// Pipeline
+// ------------------------------
+function renderPipeline(){
+  const filteredLeads = getFilteredLeads();
+  document.getElementById('totalLeads').textContent = `(${filteredLeads.length} leads)`;
+  const stageMap = new Map();
+  filteredLeads.forEach(l => {
+    let arr = stageMap.get(l.stage) || [];
+    arr.push(l);
+    stageMap.set(l.stage, arr);
+  });
+  const container = document.getElementById('pipelineContainer');
+  container.innerHTML = '';
+  const stageOrder = ['New', 'Non-Respondent', 'Qualified - Nurturing', 'Responded', 'Assessment Booked', 'Assessment Canceled', 'Assessment Rescheduled', 'Assessment Completed', 'Unqualified - Out of Area', 'Unqualified - Financial', 'Unqualified - Services', 'Unqualified - Timeline', 'Unqualified - Other'];
+  const orderedStages = stageOrder.filter(s => stageMap.has(s));
+  orderedStages.forEach(stage => {
+    const leadsList = stageMap.get(stage);
+    const div = document.createElement('div');
+    div.className = 'stage';
+    div.innerHTML = `<strong>${stage}</strong><br>${leadsList.length} leads`;
+    div.addEventListener('click', () => showLeadsModal(stage, leadsList));
+    container.appendChild(div);
+  });
+}
+function showLeadsModal(stage, leadsList){
+  document.getElementById('leadsModalTitle').textContent = `Leads in ${stage}`;
+  const table = document.getElementById('leadsModalTable');
+  table.innerHTML = '';
+  const headers = ['lead_id','created_at','first_name','last_name','email','phone','lead_status','qualified_flag'];
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  leadsList.forEach(l => {
+    const tr = document.createElement('tr'); tr.className='row';
+    headers.forEach(h => {
+      const td = document.createElement('td');
+      td.textContent = l[h] || '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  document.getElementById('leadsModal').style.display = 'flex';
+}
+// ------------------------------
+// Modal / Trend
+// ------------------------------
+function openModal(level=null, id=null, name=null){
+  modalLevel = level;
+  modalId = id;
+  modalName = name;
+  document.getElementById('modalTitle').textContent = name ? `Trend for ${name}` : 'Custom Trend';
+  document.getElementById('modal').style.display='flex';
+  renderModalChart();
+}
+function closeModal(){
+  document.getElementById('modal').style.display='none';
+  if(modalChart) modalChart.destroy();
+  modalLevel = null;
+  modalId = null;
+  modalName = null;
+}
+function renderModalChart(){
+  const rows = getRowsForChart(modalLevel, modalId);
+  const step = +document.getElementById('bucketStep').value;
+  const start = state.start; const end = state.end;
+  const buckets = new Map();
+  rows.forEach(r=>{
+    const dd = Math.floor((new Date(r.date)-start)/86400000);
+    const b = Math.floor(dd/step);
+    const key = b;
+    const o = buckets.get(key)||{label: fmtDate(addDays(start,b*step)), spend:0, leads:0, appts:0};
+    o.spend += r.spend; o.leads += r.leads_optin; o.appts += r.appointments_attributed; buckets.set(key,o);
+  });
+  const series = Array.from(buckets.values()).sort((a,b)=>a.label.localeCompare(b.label));
+  const labels = series.map(s=>s.label);
+  const leadsS = series.map(s=>s.leads); const apptsS = series.map(s=>s.appts); const spendS = series.map(s=>s.spend);
+  if(modalChart) modalChart.destroy();
+  modalChart = new Chart(document.getElementById('modalChart'), {
+    type:'bar', data:{ labels, datasets:[
+      {label:'Leads', data:leadsS},
+      {label:'Appointments', data:apptsS},
+      {type:'line', label:'Spend', data:spendS, yAxisID:'y1'}
+    ]}, options:{ responsive:true, scales:{ y:{beginAtZero:true}, y1:{beginAtZero:true, position:'right'} } }
+  });
+}
+// ------------------------------
+// Filters UI Logic
+// ------------------------------
+function setDateInputs(){
+  const sd = document.getElementById('startDate');
+  const ed = document.getElementById('endDate');
+  sd.value = fmtDate(state.start); ed.value = fmtDate(state.end);
+}
+function applyPreset(){
+  const preset = document.getElementById('timePreset').value;
+  const now = new Date();
+  if(['7','14','30'].includes(preset)){
+    state.start = addDays(now, -(+preset)); state.end = now;
+  } else if(preset==='thismonth'){
+    const first = new Date(now.getFullYear(), now.getMonth(), 1); state.start = first; state.end = now;
+  } else if(preset==='lastmonth'){
+    const first = new Date(now.getFullYear(), now.getMonth()-1, 1); const last = new Date(now.getFullYear(), now.getMonth(), 0); state.start = first; state.end = last;
+  } else if(preset==='max'){
+    const dates = jf.map(r=>r.date).sort(); state.start = new Date(dates[0]); state.end = new Date(dates[dates.length-1]);
+  } else {
+  }
+  setDateInputs();
+}
+function applyFilters(){
+  state.start = new Date(document.getElementById('startDate').value);
+  state.end = new Date(document.getElementById('endDate').value);
+  state.client = document.getElementById('clientSel').value;
+  state.campaign = document.getElementById('campaignSel').value;
+  state.adset = document.getElementById('adsetSel').value;
+  state.ad = document.getElementById('adSel').value;
+  switchPage(document.querySelector('.tab.active').dataset.page);
+}
+// ------------------------------
+// Navigation
+// ------------------------------
+function switchPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.getElementById('page-'+id).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab[data-page="${id}"]`).classList.add('active');
+  if(id==='dashboard') renderDashboard();
+  if(id==='performance') renderPerformance();
+  if(id==='pipeline') renderPipeline();
+}
+// ------------------------------
+// Init
+// ------------------------------
+window.addEventListener('DOMContentLoaded', ()=>{
+  populateSelectors();
+  applyPreset();
+  setDateInputs();
+  renderDashboard();
+  document.getElementById('timePreset').addEventListener('change', ()=>{
+    applyPreset();
+    if(document.getElementById('timePreset').value !== 'custom'){
+      applyFilters();
+    }
+  });
+  document.getElementById('applyBtn').addEventListener('click', applyFilters);
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      switchPage(tab.dataset.page);
+    });
+  });
+  document.querySelectorAll('.toggle-level').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.toggle-level').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.level = btn.dataset.level;
+      renderPerformance();
+    });
+  });
+  document.getElementById('openTrend').addEventListener('click', ()=>openModal());
+  document.getElementById('openPerfTrend').addEventListener('click', ()=>openModal());
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('bucketStep').addEventListener('change', renderModalChart);
+  document.getElementById('closeLeadsModal').addEventListener('click', () => document.getElementById('leadsModal').style.display='none');
+});
+</script>
+</body>
+</html>
